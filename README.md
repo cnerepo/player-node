@@ -82,6 +82,10 @@ Because of this simplicity, we'll be free to test how fast the player is deliver
 
 ## Findings
 
+all times are in milliseconds
+
+Because loader.js/inline_embed.js make all the database calls here, the most interesting time frame is between `making loader script` and `loaderjs loaded`.  While the average time here is about half on the empty player branch, it's not where the bottleneck is.  That would be the load time of `player.js` from cloudfront, which at 200ms takes about twice as long as anything else
+
 **DFP branch**
 
 ```
@@ -107,8 +111,10 @@ load complete: player.js        1288, 1368, 1329, 1221
 createPlayer:                   1289, 1369, 1330, 1222
 ```
 
-
 **frontend bottlenecks**
+
+On the frontend, the bottleneck seems to the amount of time it takes to hit `player.src` (500 ms)
+and viewport autoplay, whcih is governed by video.js's `ready` event
 
 ```
 player.src:            1753
