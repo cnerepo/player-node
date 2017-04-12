@@ -84,6 +84,7 @@ Because of this simplicity, we'll be free to test how fast the player is deliver
 
 **DFP branch**
 
+```
 appending original script:      873,  880,  898,  829
 making loader script:           956,  983,  979,  911
 loaderjs loaded:                1086, 1032, 1017, 1039
@@ -91,11 +92,12 @@ load complete: ima3.js          1181, 1128, 1112, 1132
 load complete: player-style.css 1248, 1167, 1148, 1181
 load complete: player.js        1448, 1351, 1536, 1371
 createPlayer:                   1352, 1537, 1371
-
+```
 
 
 **empty player branch**
 
+```
 appending original script:      828,  862,  836,  813
 making loader script:           936,  954,  988,  892
 loaderjs loaded:                965,  984,  1022, 912
@@ -103,11 +105,12 @@ load complete: ima3.js          1063, 1076, 1116, 1005
 load complete: player-style.css 1109, 1119, 1151, 1043
 load complete: player.js        1288, 1368, 1329, 1221
 createPlayer:                   1289, 1369, 1330, 1222
-
+```
 
 
 **frontend bottlenecks**
 
+```
 player.src:            1753
 checking viewport:     1812
 checking viewport:     1825
@@ -116,7 +119,7 @@ viewport autoplaying:  2134
 viewport check passed: 2135
 viewport autoplaying:  2136
 player.play:           2137
-
+```
 ## Additional work
 
 1. Remove any non-critical vendor code we may have in our player build
