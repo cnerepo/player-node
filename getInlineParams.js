@@ -9,10 +9,18 @@ const client = redis.createClient({
   port: 6379
 });
 
+const getDivs = params => {
+  return JSON.stringify({
+    target: 'stage-embed-target',
+    companion: ''
+  })
+}
+
 module.exports = params => (
   client.getAsync('player-frontend:current')
     .then(currentRevision => client.getAsync(`player-frontend-code:${currentRevision}`))
     .then(playerCode => ({
+      divs: getDivs(params),
       playerCode: JSON.parse(playerCode),
       videoId: params.video_id
   }))
