@@ -1,0 +1,191 @@
+;(function() {
+  window._cne = window._cne || {};
+  window._cne.assets = window._cne.assets || {};
+
+  var config = {
+    divs: {"target":"stage-embed-target","companion":""},
+    environment: {"base_url":"//localhost:3000","facebook_pixel_id":"1663130473914833","omniture_library_path":"//assets.adobedtm.com/6372cf21ef88ee60bc2977a4898dcb5c7945a212/satelliteLib-f6ce2f96a2667d456566d069cf599296f21c0f0f-staging.js","simplereach_library_path":"//d8rk54i4mohrb.cloudfront.net/js/reach.js","omniture_page_type":"","ssl":false,"threejs_path":"https://player-frontend-local.s3.amazonaws.com/player/three.min-7f0cd20c14ba3c418f62b71ddf014cb1.js","source_url":null,"source_referrer":null,"sparrow_origin":"cnetest"},
+    playlist: null,
+    playerConfig: {"preload":true,"on_the_scene":false,"adUnit":"/3379/golfdigest.dart","show_thescene_logo":true,"isScriptEmbed":null,"isIframeEmbed":null,"autoplay":false,"inViewportAutoplay":true,"muted":false,"onReady":null,"ads_disabled":false,"secret_media_key":"","secret_media_ssid":"","has_companion":true,"has_rail":true,"adUnitPath":"/3379/golfdigest.dart","continuousPlay":true,"theme":"dark"},
+    videoId: '{{videoId}}'
+  };
+
+  // var secretMedia;
+
+
+    // var smKey = config.playerConfig.secret_media_key;
+    // if (smKey.length > 0) {
+    //   secretMedia = new SMSdk(smKey);
+    // }
+
+  // TODO (post-launch): Explore custom builds to avoid loading ad lib when not
+  // needed or dynamically load on client to avoid blocking player render.
+  var assets = [
+    { type: 'js', url: '//imasdk.googleapis.com/js/sdkloader/ima3.js', ad: true },
+    { type: 'js', url: '{{playerCode.js}}', ad: false },
+    { type: 'css', url: '{{playerCode.css}}', ad: false }
+  ];
+
+  // if (config.playerConfig.ads_disabled) { assets.filter(function(asset) { return !asset.ad; }); }
+
+  function loadAsset(url, assetType, namespace, options) {
+  var assetOptions = options || {};
+  var completeCallback = assetOptions.completeCallback || function(){};
+  var loadSuccess = assetOptions.loadSuccess || function(){};
+
+  var loadComplete = function() {
+    namespace[this.url] = true;
+    loadSuccess();
+  };
+
+  var callbacks = { onload: loadComplete, complete: completeCallback };
+
+  load(url, assetType, namespace, callbacks);
+};
+
+function load(url, assetType, namespace, callbacks) {
+  var tag;
+
+  if (loadCheck(url, namespace)) {
+    callbacks.complete();
+    return;
+  }
+
+  if (assetType === 'js') {
+    tag = document.createElement('script');
+    tag.setAttribute('type', 'text/javascript');
+    tag.setAttribute('src', url);
+    // Order of dependencies needs to be preserved when loading
+    tag.async = false;
+  } else if (assetType === 'css') {
+    tag = document.createElement('link');
+    tag.setAttribute('rel', 'stylesheet');
+    tag.setAttribute('type', 'text/css');
+    tag.setAttribute('href', url);
+  }
+
+  tag.onload = function() {
+    console.log('load complete:', url, window.top.performance.now());
+    callbacks.onload();
+    callbacks.complete(true);
+  };
+
+  tag.onerror = function(err) {
+    callbacks.complete(false, err);
+  };
+
+  (document.getElementsByTagName("head")[0] || document.documentElement).appendChild(tag);
+};
+
+// Checks to see if the asset is loaded to prevent it from
+// loading twice.  In case of multiple players on page.
+function loadCheck(url, namespace) {
+  return namespace[url] === true;
+};
+
+  function loadPlayer(assets, config, secretMedia) {
+  var namespace = window._cne.assets;
+  // makes it easy to check for null or undefined.
+  var PromiseAPI = window.Promise;
+  if (PromiseAPI &&
+      Object.prototype.toString.call(PromiseAPI.resolve()) === '[object Promise]' &&
+      !PromiseAPI.cast) {
+
+    // TODO: add error/reject handling
+    var promises = [];
+
+    assets.forEach(function(asset) {
+      var assetPromise = new Promise(function(resolve, reject) {
+        var completeCallback = function(success, result) {
+          if (success) {
+            resolve(result);
+          } else {
+            reject(result);
+          }
+        };
+        loadAsset(
+          asset.url,
+          asset.type,
+          namespace,
+          { completeCallback: completeCallback }
+        );
+      });
+
+      if (asset.ad) {
+        // If ad blocked, don't crash player.
+        // TODO: add error reporting to catch.
+        assetPromise = assetPromise.catch(function() {});
+      }
+
+      promises.push(assetPromise);
+    });
+
+    // TODO: add error handling for when critical player assets fail.
+    // Render error message...
+    Promise.all(promises).then(function() {
+      onAssetsLoaded(config, secretMedia);
+    });
+  } else {
+    getAssetChecker = function() {
+      var assetsLoaded = 0;
+
+      return function() {
+        if (++assetsLoaded === assets.length) {
+          onAssetsLoaded(config, secretMedia);
+        }
+      }
+    };
+
+    var assetChecker = getAssetChecker();
+    var assetCallbacks = { completeCallback: assetChecker };
+
+    assets.forEach(function(asset) {
+      loadAsset(asset.url, asset.type, namespace, assetCallbacks);
+    });
+  }
+}
+
+function onAssetsLoaded(config, secretMedia) {
+  if (secretMedia) {
+    // Secret media must be initialized and loaded before player and other assets.
+    secretMedia.unblock('', function(_, hasAdBlock) {
+      if (hasAdBlock) {
+        config.playerConfig.ssid = config.playerConfig.secret_media_ssid;
+      }
+      fullyLoaded(config);
+    });
+  } else {
+    fullyLoaded(config);
+  }
+};
+
+function fullyLoaded(config) {
+  if (true) {
+    _cne.players = _cne.players || {};
+    // _cne.players[config.divs.target] =
+    window._cne.createPlayer(config);
+  } else {
+    window._cne.playerDeferred = {
+      config: config,
+      createPlayer: window._cne.createPlayer
+    }
+    if (typeof window.deferVideoPlay === 'function') { window.deferVideoPlay() };
+  }
+
+  if (typeof performance !== 'undefined' &&
+    typeof performance.mark !== 'undefined') {
+    // custom metric for Speedcurve.
+    console.log('assets loaded', window.parent.performance.now());
+    performance.mark('loaderjs_assets_loaded');
+  }
+};
+
+
+  if (typeof window.performance !== 'undefined' &&
+    typeof window.performance.mark !== 'undefined') {
+    performance.mark('loaderjs_loaded');
+    console.log('inline_embed loaded:', window.top.performance.now());
+  }
+
+  loadPlayer(assets, config);
+})();
