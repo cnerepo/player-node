@@ -1,0 +1,137 @@
+// This script finds itself in the document body and inserts the iframe embed payload
+// within a fluid embed div right after the script element.
+// The iframe embed payload contains the inline player embed.
+(function() {
+  var myselfScriptPath = 'localhost:3001';
+
+  var embedLoader = {
+    // Performs a check to ensure the script tag is located within
+    // the source page's document body and not within its head.
+    checkForHeadParent: function(element) {
+      var elementParent = element.parentNode;
+      while (elementParent.tagName.toUpperCase() !== 'HTML') {
+        if (elementParent.tagName.toUpperCase() === 'HEAD') {
+          throw 'EmbedLoaderError: Script tag found in head. Tag must be in doucment body.';
+        }
+        elementParent = elementParent.parentNode;
+      }
+    },
+
+    // Inserts iframePayload inside the embedCode and adds embedCode to the page.
+    findAndInsert: function(embedCode, iframePayload) {
+      var iframe, queries, scriptTag;
+      scriptTag = this.findMyself();
+      this.checkForHeadParent(scriptTag);
+      scriptTag.parentNode.insertBefore(embedCode, scriptTag.nextSibling);
+      iframe = embedCode.getElementsByTagName('iframe')[0];
+      var doc = iframe.contentDocument;
+      doc.open();
+      doc.write(iframePayload);
+      doc.close();
+    },
+
+    // Locates this <script> tag.
+    findMyself: function() {
+      var me = null;
+      var scripts = document.getElementsByTagName('script');
+
+      for (var i = 0, len = scripts.length; i < len; ++i) {
+        var currentScript, currentScriptClasses, src;
+
+        currentScript = scripts[i];
+        currentScriptClasses = ' ' + currentScript.className + ' ';
+        src = currentScript.getAttribute('src');
+
+        if (src !== null && src.indexOf(myselfScriptPath) !== -1 &&
+            currentScriptClasses.indexOf(' cne-dirty ') === -1) {
+
+          currentScript.className += ' cne-dirty';
+          me = currentScript;
+          break;
+        }
+      }
+      if (!me) { throw 'EmbedLoaderError: Script tag not found.'; }
+
+      return me;
+    },
+
+    // This is used to find the embed div and be able to resize it when a companion appears.
+    getGuid: function() {
+      var guidValue;
+
+      function s4() {
+        var guidSection = Math.floor((1 + Math.random()) * 0x10000);
+        return guidSection.toString(16).substring(1);
+      }
+
+      guidValue = s4() + s4() + '-' + s4() + '-' + s4();
+      guidValue += '-' + s4() + '-' + s4() + s4() + s4();
+
+      return guidValue;
+    },
+
+    // Prepares embed code and iframe payload to be inserted and inserts them
+    insertEmbed: function() {
+      var embedCode, embedCodeHolder, guid,
+          iframePayload, srcReferrer, srcReferrerGuid;
+
+      guid = this.getGuid();
+      embedCode = {{> _iframe_wrapper}};
+      iframePayload = "{{{> _iframe_embed}}}";
+
+      // This is not the best way of passing vars into the
+      // iframe payload but since we cannot manipulate the iframe
+      // contentWindow in ie9 and 10. we use this hack for now.
+      original = "var sourceReferrer = guid = '';";
+      replacement = "var sourceReferrer = '" + document.referrer + "';guid = '" + guid + "';";
+      iframePayload = iframePayload.replace(original, replacement);
+
+      embedCodeHolder = document.createElement('div');
+      embedCodeHolder.innerHTML = embedCode;
+      embedCode = embedCodeHolder.firstChild;
+      embedCode.id = guid;
+
+      // Script tags being inserted by jQuery.html() or .append()
+      // will be evaluated before being inserted into the DOM. If
+      // we don't find the script tag in the body, delay execution
+      // of findMyself until jQuery has re-inserted the script tag.
+
+      var gptCallback = function() {
+        this.findAndInsert(embedCode, iframePayload);
+      }.bind(this);
+
+      try {
+        this.insertGptIframeProxy(gptCallback);
+      } catch(e) {
+        setTimeout(function() {
+          this.insertGptIframeProxy(gptCallback);
+        }.bind(this), 0);
+      }
+    },
+
+    insertGptIframeProxy: function(callback) {
+      callback();
+    }
+  };
+
+  if (document.addEventListener) {
+    // 'interactive' is necessary if a page is still loading all
+    // resources (ads will definitely factor into this)
+    var validStates = ['complete', 'loaded', 'interactive'];
+    var isReady = document.body && validStates.indexOf(document.readyState) > -1;
+
+    if (isReady) {
+      embedLoader.insertEmbed();
+    } else {
+      document.addEventListener('DOMContentLoaded', function() {
+        embedLoader.insertEmbed();
+      });
+    }
+  } else {
+
+    // allow embed scripts to work for IE8
+    document.attachEvent('onreadystatechange', function() {
+      embedLoader.insertEmbed();
+    });
+  }
+})();

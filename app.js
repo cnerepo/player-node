@@ -4,13 +4,26 @@ const app = express();
 
 const getInlineParams = require('./getInlineParams.js');
 
-app.engine('hbs', exphbs());
-app.set('view engine', 'hbs');
+const hbs = exphbs.create({
+  partialsDir: ['views/partials/']
+});
+
+app.engine('handlebars', hbs.engine);
+app.set('view engine', 'handlebars');
 
 app.get('/inline/video/:video_id.js', (req, res) => {
   getInlineParams(req.params).then(params => {
-    console.log(params.playerCode.js)
+    hbs.getPartials().then(partials => console.log(partials));
     res.render('inline_embed', params);
+  })
+});
+
+app.get('/script/video/:video_id.js', (req, res) => {
+  console.log(req.params);
+  console.log(req.query);
+  res.render('script_embed', {
+    videoId: req.params.videoId,
+    adUnitId: req.query.adUnitId
   })
 });
 

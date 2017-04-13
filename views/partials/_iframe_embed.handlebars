@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html class="embed-html">
+  <body class="embed-body">
+    <div id="embed-container">
+      <div id="embedplayer"></div>
+    </div>
+
+    <script type="text/javascript">
+      (function() {
+        // Generate Inline Embed Url - add JS provided params (sourceReferrer and sourceUrl)
+        // Embed Loader uses the following line to string
+        // replace source referrer and also replace the guid.
+        var sourceReferrer = guid = '';
+        var sourceUrl = <%= @request_params[:isIframeEmbed] ? 'document.referrer' : 'window.location.href' %>;
+
+        var embedUrl = '<%= controller.get_base_url %><%= @base_embed_url %>.js?';
+        embedUrl += '<%== @request_params.to_query %>';
+        embedUrl += '&sourceReferrer=' + sourceReferrer;
+        embedUrl += '&sourceUrl=' + sourceUrl;
+        embedUrl += '&target=embedplayer';
+
+        // Insert Inline Script
+        var myselfScript = document.getElementsByTagName('script')[0];
+        var playerScriptEl = document.createElement('script');
+        playerScriptEl.src = embedUrl;
+        playerScriptEl.type = 'text/javascript';
+        myselfScript.parentNode.insertBefore(playerScriptEl, myselfScript);
+
+        // Handle Companion Showing / Hiding
+        var toggleCompanion = function(visibility) {
+          if (<%= @request_params[:isScriptEmbed] %>) {
+            try {
+              var companionHeight = 75; // 60 height + 15 margin
+              var railHeight = <%= @playlist_bar_height || 0 %>;
+              var embedContainerEl = window.frameElement.parentElement;
+              if (visibility) {
+                embedContainerEl.style.height = companionHeight + railHeight + 'px';
+              } else {
+                embedContainerEl.style.height = railHeight + 'px';
+              }
+            } catch (_error) {
+              // ...and if that doesn't work, do nothing
+            }
+          }
+        };
+
+        window.onPlayerReady = function(player) {
+          player.on('cne:companion_rendered', function() {
+            toggleCompanion(true);
+          });
+
+          player.on('cne:companion_removed', function() {
+            toggleCompanion(false);
+          });
+        };
+      })();
+    </script>
+  </body>
+</html>
