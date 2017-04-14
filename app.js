@@ -5,6 +5,12 @@ const app = express();
 const getInlineParams = require('./getInlineParams.js');
 
 const hbs = exphbs.create({
+  helpers: {
+    trimNewlines: function(text) {
+      console.log(arguments)
+      return text.replace(/\n/, '\n');
+    }
+  },
   partialsDir: ['views/partials/']
 });
 
